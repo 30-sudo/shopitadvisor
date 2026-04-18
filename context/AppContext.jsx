@@ -3,6 +3,7 @@ import { productsDummyData, userDummyData } from "@/assets/assets";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 export const AppContext = createContext();
 
@@ -19,7 +20,17 @@ export const AppContextProvider = (props) => {
     const [products, setProducts] = useState([])
     const [userData, setUserData] = useState(false)
     const [isSeller, setIsSeller] = useState(true)
-    const [cartItems, setCartItems] = useState({})
+    const [cartItems, setCartItems] = useState(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const saved = localStorage.getItem('cartItems');
+                return saved ? JSON.parse(saved) : {};
+            } catch {
+                return {};
+            }
+        }
+        return {};
+    })
 
     const fetchProductData = async () => {
         setProducts(productsDummyData)
@@ -30,16 +41,14 @@ export const AppContextProvider = (props) => {
     }
 
     const addToCart = async (itemId) => {
-
         let cartData = structuredClone(cartItems);
         if (cartData[itemId]) {
             cartData[itemId] += 1;
-        }
-        else {
+        } else {
             cartData[itemId] = 1;
         }
         setCartItems(cartData);
-
+        toast.success('Added to cart');
     }
 
     const updateCartQuantity = async (itemId, quantity) => {
@@ -68,7 +77,7 @@ export const AppContextProvider = (props) => {
         let totalAmount = 0;
         for (const items in cartItems) {
             let itemInfo = products.find((product) => product._id === items);
-            if (cartItems[items] > 0) {
+            if (itemInfo && cartItems[items] > 0) {
                 totalAmount += itemInfo.offerPrice * cartItems[items];
             }
         }
@@ -82,6 +91,10 @@ export const AppContextProvider = (props) => {
     useEffect(() => {
         fetchUserData()
     }, [])
+
+    useEffect(() => {
+        localStorage.setItem('cartItems', JSON.stringify(cartItems));
+    }, [cartItems])
 
     const value = {
         user,
